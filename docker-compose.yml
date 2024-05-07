@@ -137,7 +137,6 @@ services:
       psql -h postgres-db -U ${POSTGRES_USER} -d ${POSTGRES_DB} -p 5432 -a -f /docker-entrypoint-initdb.d/init_db_script.sql
 
 
-
 volumes:
   kafka-data:
   pgdata:
@@ -146,18 +145,6 @@ networks:
   kafka_network:
     name: kafka_docker_net
 
-#
-#  control-center:
-#    networks:
-#      - kafka_network
-#    extends:
-#      file: docker/control-center/docker-compose.control-center.yml
-#      service: control-center
-#    depends_on:
-#      broker:
-#        condition: service_healthy
-#      schemaregistry:
-#        condition: service_healthy
 
 
 
