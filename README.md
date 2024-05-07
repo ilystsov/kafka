@@ -1,48 +1,28 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/epyN7NFK)
-# Apache Kafka (части 1-2)
+## ДЗ 8. Apache Kafka
 
-![][img]
+### Описание приложения
+Продюсер периодически 
+обращается в криптовалютное [api](https://min-api.cryptocompare.com)
+и собирает цены на 3 криптовалюты —	BTC, ETH, TON.
 
-## [Обзор ][overview]
+Далее он отправляет собранные значения 
+в Kafka, откуда их читает консюмер и записывает в БД.
 
-## I. [Архитектура][architecture]
-## II [Kafka и классические сервисы очередей][classic_queues]
-## III. [Структура данных][data_structures]
-## IIII. [Группы консюмеров][consumer_groups]
-## V. [Создание проекта][create_project]
-## VI. [Создание топика][create_topic]
-## VII. [Создание продюсера][create_producer]
-## VIII. [Создание консюмера][create_consumer]
-## VIIII. [Продюсирование событий][produce_events]
-## X. [Потребление событий][consume_events]
-## XI. [Компоненты и экосистема][ecosystem]
-## XII. [Создание событий с помощью схемы JSON][json_schema]
-## XIII. [Потребление событий с помощью схемы JSON][json_schema_consume]
-## XIIII. [Формат AVRO][avro]
+Вся информация по записи в БД, отправке
+данных продюсером и получении данных
+консюмером логируется и появляется в файлах
+`database.log`, `producer.log`,
+`consumer.log`.
 
-## [ДЗ][homework]
-
-
----
-
-[img]: assets/img/img.png
-
-[overview]: assets/materials/overview.md "Обзор"
-[architecture]: assets/materials/architecture.md "architecture"
-[create_project]: assets/materials/create_project.md "create_project"
-[create_topic]: assets/materials/create_topic.md "create_topic"
-[create_producer]: assets/materials/create_producer.md "create_producer"
-[create_consumer]: assets/materials/create_consumer.md "create_consumer"
-[produce_events]: assets/materials/produce_events.md "produce_events"
-[consume_events]: assets/materials/consume_events.md "consume_events"
-[classic_queues]: assets/materials/classic_queues.md "classic_queues"
-[data_structures]: assets/materials/data_structures.md "data_structures"
-[consumer_groups]: assets/materials/consumer_groups.md "consumer_groups"
-[ecosystem]: assets/materials/ecosystem.md "ecosystem"
-[json_schema]: assets/materials/json_schema.md "json_schema"
-[json_schema_consume]: assets/materials/json_schema_consume.md "json_schema_consume"
-[avro]: assets/materials/avro.md "avro"
-
-[conclusions]: assets/materials/conclusions.md "conclusions"
-
-[homework]: assets/materials/homework.md "homework"
+Консюмер и Продюсер используют схему
+в формате `Avro` для сообщений.
+### Запуск приложения и тестов
+Для запуска приложения необходимо выполнить следующую команду:
+```bash
+make run
+```
+Для запуска тестов необходимо выполнить следующие команды:
+```bash
+make install
+make test
+```

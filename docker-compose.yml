@@ -1,46 +1,163 @@
-version: '3.6'
+version: '3.7'
 
 services:
   zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: nc -z zookeeper 2181
+      interval: 15s
+      timeout: 5s
+      retries: 3
     networks:
       - kafka_network
-    extends:
-      file: docker/zookeeper/docker-compose.zookeeper.yml
-      service: zookeeper
 
-  broker1:
-    networks:
-      - kafka_network
-    extends:
-      file: docker/kafka/docker-compose.kafka.yml
-      service: broker1
+  schema-registry:
+    image: confluentinc/cp-schema-registry:latest
+    hostname: schema-registry
+    container_name: schema-registry
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: "http://schema-registry:8081"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://broker-1:9092,PLAINTEXT_INTERNAL://localhost:29092
+
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: curl -f http://schema-registry:8081/subjects
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
     depends_on:
       zookeeper:
         condition: service_healthy
-
-  schemaregistry:
+      broker-1:
+        condition: service_healthy
     networks:
       - kafka_network
-    extends:
-      file: docker/schemaregistry/docker-compose.schemaregistry.yml
-      service: schemaregistry
+
+  broker-1:
+    image: confluentinc/cp-kafka:latest
+    hostname: broker-1
+    container_name: broker-1
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker-1:9092,PLAINTEXT_INTERNAL://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server=broker-1:29092
+      interval: 30s
+      timeout: 10s
+      retries: 5
     depends_on:
       zookeeper:
         condition: service_healthy
-
-  control-center:
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     networks:
       - kafka_network
-    extends:
-      file: docker/control-center/docker-compose.control-center.yml
-      service: control-center
-    depends_on:
-      broker1:
-        condition: service_healthy
-      schemaregistry:
-        condition: service_healthy
 
+  producer:
+    build:
+      context: .
+      dockerfile: docker/tests/producer/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      broker-1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    networks:
+      - kafka_network
+    volumes:
+      - .:/opt/app
+
+  consumer:
+    build:
+      context: .
+      dockerfile: docker/tests/consumer/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      broker-1:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - kafka_network
+    volumes:
+      - .:/opt/app
+
+  postgres-db:
+    image: postgres:16.1
+    container_name: postgres-db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "15432:5432"
+    env_file:
+      - .env
+    networks:
+      - kafka_network
+    healthcheck:
+      test: pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-init:
+    image: postgres:16.1
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    volumes:
+      - ./init_db_script.sql:/docker-entrypoint-initdb.d/init_db_script.sql
+    env_file:
+      - .env
+    networks:
+      - kafka_network
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command:
+      psql -h postgres-db -U ${POSTGRES_USER} -d ${POSTGRES_DB} -p 5432 -a -f /docker-entrypoint-initdb.d/init_db_script.sql
+
+
+
+volumes:
+  kafka-data:
+  pgdata:
 
 networks:
   kafka_network:
     name: kafka_docker_net
+
+#
+#  control-center:
+#    networks:
+#      - kafka_network
+#    extends:
+#      file: docker/control-center/docker-compose.control-center.yml
+#      service: control-center
+#    depends_on:
+#      broker:
+#        condition: service_healthy
+#      schemaregistry:
+#        condition: service_healthy
+
+
+

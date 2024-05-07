@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS crypto_prices (
+    id SERIAL PRIMARY KEY,
+    currency VARCHAR(10) NOT NULL,
+    price_usd NUMERIC(20, 8) NOT NULL,
+    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'UTC')
+);
